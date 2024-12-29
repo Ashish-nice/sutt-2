@@ -1,0 +1,27 @@
+{% extends 'main/base.html' %}
+{% block title %}Borrow History{% endblock %}
+
+{% block content %}
+<div class="container mx-auto p-6 bg-white rounded-lg shadow-lg">
+    <h2 class="text-2xl font-bold mb-4">Borrow History</h2>
+    {% if borrows %}
+        <ul class="borrow-list space-y-4">
+            {% for borrow in borrows %}
+                <li class="borrow-item p-4 border rounded-lg shadow-sm">
+                    <div class="borrow-details">
+                        <strong>{{ borrow.book.title }}</strong> by {{ borrow.book.author }}
+                        <p>Borrowed on: {{ borrow.borrowed_date }}</p>
+                        <p>Returned on: {{ borrow.returned_date }}</p>
+                        {% if borrow.late_fees > 0 %}
+                            <p>Late Fees: {{ borrow.late_fees }}</p>
+                        {% endif %}
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No borrow history found.</p>
+    {% endif %}
+    <a href="{% url 'home' %}" class="btn btn-primary bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-700 mt-4">Back to Home</a>
+</div>
+{% endblock %}

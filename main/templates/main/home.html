@@ -1,0 +1,63 @@
+{% extends 'main/base.html' %}
+{% block title %}Home Page{% endblock %}
+
+{% block content %}
+<div class="container mx-auto p-6">
+    <h2 class="text-2xl font-bold mb-4">Welcome, {{ user.username }}</h2>
+
+    <form method="get" class="search-form flex mb-4">
+        <input type="text" name="q" placeholder="Search books..." value="{{ request.GET.q }}" class="search-input flex-1 p-2 border rounded-l">
+        <button type="submit" class="search-button bg-blue-500 text-white py-2 px-4 rounded-r hover:bg-blue-700">Search</button>
+    </form>
+
+    {% if query %}
+        <p class="mb-4">
+            {% if book_count > 0 %}
+                {{ book_count }} book(s) found for "{{ query }}".
+            {% else %}
+                No book found for "{{ query }}".
+            {% endif %}
+        </p>
+    {% endif %}
+
+    <ul class="book-list space-y-4">
+        {% if page_obj.object_list %}
+            {% for book in page_obj.object_list %}
+                <li class="book-item flex items-center p-4 border rounded-lg shadow-sm">
+                    <img src="{{ book.cover_image.url }}" alt="Cover" class="book-cover w-16 h-24 mr-4">
+                    <div class="book-details flex-1">
+                        <strong>{{ book.title }}</strong> by {{ book.author }}
+                        <div class="mt-2">
+                            {% if book.copies_available > 0 %}
+                                {% if book.id not in borrowed_books %}
+                                    <a href="{% url 'borrow_book' book.id %}" class="borrow-link bg-green-500 text-white py-1 px-3 rounded hover:bg-green-700">Borrow</a>
+                                {% endif %}
+                            {% else %}
+                                <span class="not-available bg-red-500 text-white py-1 px-3 rounded">Not Available</span>
+                            {% endif %}
+                            <!-- Add return option if the user has borrowed the book -->
+                            {% for borrow in book.borrow_set.all %}
+                                {% if borrow.user == request.user and not borrow.returned_date %}
+                                    <a href="{% url 'return_book' borrow.id %}" class="borrow-link bg-yellow-500 text-white py-1 px-3 rounded hover:bg-yellow-700 ml-2">Return</a>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </li>
+            {% endfor %}
+        {% else %}
+            <li>No book found.</li>
+        {% endif %}
+    </ul>
+
+    <div class="pagination mt-4 text-center">
+        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}" class="pagination-link text-blue-500 hover:underline">Previous</a>
+        {% endif %}
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}" class="pagination-link text-blue-500 hover:underline">Next</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

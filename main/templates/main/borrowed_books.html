@@ -1,0 +1,21 @@
+{% extends 'main/base.html' %}
+{% block title %}My Borrowed Books{% endblock %}
+
+{% block content %}
+<div class="container mx-auto p-6 bg-white rounded-lg shadow-lg">
+    <h2 class="text-2xl font-bold mb-4">My Borrowed Books</h2>
+    <ul class="borrowed-books-list space-y-4">
+        {% for borrow in borrows %}
+            <li class="borrowed-book-item p-4 border rounded-lg shadow-sm">
+                <strong>{{ borrow.book.title }}</strong> by {{ borrow.book.author }}
+                <p>Due Date: {{ borrow.due_date }}</p>
+                {% if borrow.returned_date %}
+                    <p>Returned on: {{ borrow.returned_date }}</p>
+                {% else %}
+                    <a href="{% url 'return_book' borrow.id %}" class="return-link bg-yellow-500 text-white py-1 px-3 rounded hover:bg-yellow-700">Return</a>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}
