@@ -1,80 +1,92 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib import messages
+from django.views import View
+from django.views.generic import ListView
 from .models import Book, Borrow
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect
 from datetime import timedelta, date
 
-# Create your views here.
+class HomeView(LoginRequiredMixin, ListView):
+    model = Book
+    template_name = 'main/home.html'
+    context_object_name = 'page_obj'
+    paginate_by = 10
+
+    def get_queryset(self):
+        queryset = Book.objects.all()
+        query = self.request.GET.get('q')
+        if query:
+            queryset = queryset.filter(title__icontains=query)  # Changed back to title
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        books = self.get_queryset()
+        context['book_count'] = books.count()
+        context['query'] = self.request.GET.get('q')
+        context['books'] = books
+        context['borrowed_books'] = Borrow.objects.filter(
+            user=self.request.user, 
+            returned_date__isnull=True
+        ).values_list('book_id', flat=True)
+        return context
+
 @login_required
-def home(request):
-    books = Book.objects.all()  # Get all books
-    query = request.GET.get('q')  # Search query
-    if query:
-        books = books.filter(title__icontains=query)  # Filter by title containing query
-
-    book_count = books.count()  # Total books count
-
-    paginator = Paginator(books, 10)  # Show 10 books per page
-    page_number = request.GET.get('page')  # Current page number
-    page_obj = paginator.get_page(page_number)  # Get page object
-
-    borrowed_books = Borrow.objects.filter(user=request.user, returned_date__isnull=True).values_list('book_id', flat=True)
-
-    return render(request, 'main/home.html', {
-        'page_obj': page_obj,
-        'book_count': book_count,
-        'query': query,
-        'books': books,  # Add books to context
-        'borrowed_books': borrowed_books,  # Add borrowed books to context
-    })
-
 def borrow_book(request, book_id):
     book = get_object_or_404(Book, id=book_id)
-    
-    if not request.user.is_authenticated:
-        return redirect('login')  # Redirect to login if user is not authenticated
-
-    existing_borrow = Borrow.objects.filter(user=request.user, book=book, returned_date__isnull=True).exists()
+    existing_borrow = Borrow.objects.filter(
+        user=request.user, 
+        book=book, 
+        returned_date__isnull=True
+    ).exists()
 
     if existing_borrow:
-        return render(request, 'main/borrow_error.html', {'message': 'You have already borrowed this book.'})
+        messages.error(request, 'You have already borrowed this book.')
+        return redirect('home')
 
     if book.copies_available > 0:
         Borrow.objects.create(
             user=request.user,
             book=book,
-            due_date=date.today() + timedelta(days=14)  # 14 days issue period
+            due_date=date.today() + timedelta(days=14)
         )
         book.copies_available -= 1
         book.save()
-        return render(request, 'main/borrow_success.html', {'book_title': book.title})  # Pass book title to success template
+        messages.success(request, f'Successfully borrowed "{book.title}".')
     else:
-        return render(request, 'main/borrow_error.html', {'message': 'No copies available'})
+        messages.error(request, 'No copies available.')
     
+    return redirect('home')
+
+@login_required
 def return_book(request, borrow_id):
     borrow = get_object_or_404(Borrow, id=borrow_id)
     borrow.returned_date = date.today()
 
-    # Calculate late fees if applicable
-    if borrow.returned_date > borrow.due_date:
+    if borrow.returned_date > borrow.borrowed_date+timedelta(days=20):
         late_days = (borrow.returned_date - borrow.due_date).days
-        borrow.late_fees = late_days * 5  # Assume 5 units per day as late fee
+        borrow.late_fees = late_days * 5
+        messages.warning(request, f'Book returned with {late_days} days late. Late fee: {borrow.late_fees} units.')
+    else:
+        messages.success(request, f'Successfully returned "{borrow.book.title}".')
 
     borrow.save()
-
-    # Update book availability
     book = borrow.book
     book.copies_available += 1
     book.save()
 
-    return render(request, 'main/return_success.html')  # Update to the correct path
+    return redirect('home')
 
-def borrowed_books(request):
-    borrows = Borrow.objects.filter(user=request.user, returned_date__isnull=True)
-    return render(request, 'main/borrowed_books.html', {'borrows': borrows})
+class HistoryView(LoginRequiredMixin, ListView):
+    model = Borrow
+    template_name = 'main/history.html'
+    context_object_name = 'borrows'
 
-@login_required
-def history(request):
-    borrows = Borrow.objects.filter(user=request.user, returned_date__isnull=False).order_by('-returned_date')
-    return render(request, 'main/history.html', {'borrows': borrows})
+    def get_queryset(self):
+        return Borrow.objects.filter(
+            user=self.request.user, 
+            returned_date__isnull=False
+        ).order_by('-returned_date')
