@@ -3,14 +3,6 @@
 
 {% block content %}
 <div class="container mx-auto p-6">
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert mb-4 p-4 rounded-lg {% if message.tags == 'success' %}bg-green-100 text-green-700 border-green-400{% elif message.tags == 'error' %}bg-red-100 text-red-700 border-red-400{% endif %}">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endif %}
-    
     <h2 class="text-2xl font-bold mb-4">Welcome, {{ user.username }}</h2>
 
     <form method="get" class="search-form flex items-center mb-4">
@@ -29,24 +21,32 @@
     {% endif %}
 
     <ul class="book-list space-y-4">
-        {% if page_obj.object_list %}
-            {% for book in page_obj.object_list %}
+        {% if books %}
+            {% for book in books %}
                 <li class="book-item flex items-center p-4 border rounded-lg shadow-sm">
-                    <img src="{{ book.cover_image.url }}" alt="Cover" class="book-cover w-16 h-24 mr-4">
+                    {% if book.cover_image %}
+                        <img src="{{ book.cover_image.url }}" alt="Cover" class="book-cover w-16 h-24 mr-4">
+                    {% endif %}
                     <div class="book-details flex-1">
                         <strong>{{ book.title }}</strong> by {{ book.author }}
                         <div class="mt-2">
                             {% if book.copies_available > 0 %}
                                 {% if book.id not in borrowed_books %}
-                                    <a href="{% url 'borrow_book' book.id %}" class="borrow-link bg-green-500 text-white py-1 px-3 rounded hover:bg-green-700">Borrow</a>
+                                    <form method="post" action="{% url 'borrow_book' book.id %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="bg-green-500 text-white py-1 px-3 rounded hover:bg-green-700">Borrow</button>
+                                    </form>
                                 {% endif %}
                             {% else %}
                                 <span class="not-available bg-red-500 text-white py-1 px-3 rounded">Not Available</span>
                             {% endif %}
-                            <!-- Add return option if the user has borrowed the book -->
+                            
                             {% for borrow in book.borrow_set.all %}
                                 {% if borrow.user == request.user and not borrow.returned_date %}
-                                    <a href="{% url 'return_book' borrow.id %}" class="borrow-link bg-yellow-500 text-white py-1 px-3 rounded hover:bg-yellow-700 ml-2">Return</a>
+                                    <form method="post" action="{% url 'return_book' borrow.id %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="bg-yellow-500 text-white py-1 px-3 rounded hover:bg-yellow-700 ml-2">Return</button>
+                                    </form>
                                 {% endif %}
                             {% endfor %}
                         </div>
@@ -54,7 +54,7 @@
                 </li>
             {% endfor %}
         {% else %}
-            <li>No book found.</li>
+            <li>No books found.</li>
         {% endif %}
     </ul>
 
@@ -71,10 +71,7 @@
 
 <footer>
     {% if user.is_authenticated and user.user_type == 'librarian' %}
-    <form method="POST" action="{% url 'home' %}">
-        {% csrf_token %}
-        <button type="submit" class="upload-button">Upload Books</button>
-    </form>
+    <a href="{% url 'upload_books' %}" class="upload-button">Upload Books</a>
     {% endif %}
 </footer>
 
