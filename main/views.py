@@ -35,6 +35,10 @@ class HomeView(LoginRequiredMixin, ListView):
             returned_date__isnull=True
         ).values_list('book_id', flat=True)
         return context
+    
+    def post(self, request):
+        return redirect('main/upload_books')
+    
 
 @login_required
 def borrow_book(request, book_id):
@@ -93,3 +97,46 @@ class HistoryView(LoginRequiredMixin, ListView):
             returned_date__isnull=False
         ).order_by('-returned_date')
     
+@login_required
+def upload_books(request):
+    if not hasattr(request.user, 'user_type') or request.user.user_type != 'librarian':
+        messages.error(request, "You do not have permission to perform this action.")
+        return redirect('home')
+
+    if request.method == 'POST':
+        form = UploadExcelForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                # Read Excel file into a DataFrame
+                excel_file = request.FILES['file']
+                df = pd.read_excel(excel_file)
+
+                # Ensure the required columns exist
+                required_columns = ['title', 'author', 'publisher', 'isbn', 'copies_total', 'copies_available']
+                if not all(col in df.columns for col in required_columns):
+                    messages.error(request, "Invalid file format. Ensure all required columns are present.")
+                    return redirect('upload_books')
+
+                # Add books to the database
+                for _, row in df.iterrows():
+                    Book.objects.update_or_create(
+                        isbn=row['isbn'],  # Unique field for identification
+                        defaults={
+                            'title': row['title'],
+                            'author': row['author'],
+                            'publisher': row['publisher'],
+                            'copies_total': row['copies_total'],
+                            'copies_available': row['copies_available'],
+                        }
+                    )
+
+                messages.success(request, "Books have been successfully uploaded.")
+                return redirect('home')
+
+            except Exception as e:
+                messages.error(request, f"An error occurred: {str(e)}")
+                return redirect('upload_books')
+    else:
+        form = UploadExcelForm()
+
+    return render(request, 'main/upload_books.html', {'form': form})

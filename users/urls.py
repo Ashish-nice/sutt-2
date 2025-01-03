@@ -9,6 +9,7 @@ urlpatterns = [
     path('login/', auth_views.LoginView.as_view(template_name='users/login.html'), name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('profile/', views.profile, name='profile'),
+    path('make-librarian/<int:user_id>/', views.make_librarian, name='make_librarian'),
 ]
 
 if settings.DEBUG:

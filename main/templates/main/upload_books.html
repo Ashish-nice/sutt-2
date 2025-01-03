@@ -1,0 +1,16 @@
+{% extends "main/base.html" %}
+
+{% block content %}
+<div class="container mx-auto p-6">
+    <h2 class="text-2xl font-bold mb-4">Upload Book Details</h2>
+    <form method="post" enctype="multipart/form-data" action="{% url 'upload_books' %}">
+        {% csrf_token %}
+        <div class="mb-4">
+            {{ form.as_p }}
+        </div>
+        <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            Upload
+        </button>
+    </form>
+</div>
+{% endblock %}

@@ -46,6 +46,12 @@ class LibrarianProfile(models.Model):
     def __str__(self):
         return f'{self.user.username} Profile'
     def save(self,*args, **kwargs):
+        # Delete any existing profiles before saving
+        if hasattr(self.user, 'studentprofile'):
+            self.user.studentprofile.delete()
+        if hasattr(self.user, 'adminprofile'):
+            self.user.adminprofile.delete()
+            
         is_new = self._state.adding
         validate_single_profile(self.user)
         if is_new and self.user.user_type != 'librarian':

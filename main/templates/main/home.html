@@ -68,4 +68,14 @@
         {% endif %}
     </div>
 </div>
+
+<footer>
+    {% if user.is_authenticated and user.user_type == 'librarian' %}
+    <form method="POST" action="{% url 'home' %}">
+        {% csrf_token %}
+        <button type="submit" class="upload-button">Upload Books</button>
+    </form>
+    {% endif %}
+</footer>
+
 {% endblock %}

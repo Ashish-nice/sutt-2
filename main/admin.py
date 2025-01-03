@@ -8,6 +8,6 @@ class BookAdmin(admin.ModelAdmin):
 
 @admin.register(Borrow)
 class BorrowAdmin(admin.ModelAdmin):
-    list_display = ('user', 'book', 'borrowed_date', 'returned_date', 'late_fees')
-    list_filter = ('borrowed_date', 'returned_date')
+    list_display = ('user', 'book', 'borrowed_date', 'due_date', 'returned_date', 'late_fees')
+    list_filter = ('borrowed_date', 'due_date', 'returned_date')
     search_fields = ('user__username', 'book__title')

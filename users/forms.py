@@ -5,11 +5,10 @@ from .models import CustomUser, StudentProfile, LibrarianProfile, AdminProfile
 
 class RegisterForm(UserCreationForm):
     email = forms.EmailField(required=True)
-    user_type = forms.ChoiceField(choices=CustomUser.USER_TYPES)
     
     class Meta:
-        model = CustomUser  # Change from User to CustomUser
-        fields = ['username', 'email', 'password1', 'password2', 'user_type']  # Add user_type
+        model = CustomUser
+        fields = ['username', 'email', 'password1', 'password2']
 
     def clean_email(self):
         email = self.cleaned_data.get('email')

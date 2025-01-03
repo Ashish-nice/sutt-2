@@ -1,11 +1,30 @@
 from django.shortcuts import render, redirect
 from .forms import RegisterForm, UserUpdateForm, ProfileUpdateForm
-from .models import StudentProfile,LibrarianProfile,AdminProfile
+from .models import CustomUser, StudentProfile,LibrarianProfile,AdminProfile
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth import logout
 from django.core.exceptions import ValidationError
 # Create your views here.
+
+@login_required
+def make_librarian(request, user_id):
+    if not request.user.is_superuser and request.user.user_type != 'admin':
+        messages.error(request, "You don't have permission to perform this action")
+        return redirect('home')
+    
+    try:
+        user = CustomUser.objects.get(id=user_id)
+        # Delete existing profile if any
+        if hasattr(user, 'studentprofile'):
+            user.studentprofile.delete()
+        # Create librarian profile
+        LibrarianProfile.objects.create(user=user)
+        messages.success(request, f'{user.username} is now a librarian')
+    except Exception as e:
+        messages.error(request, str(e))
+    
+    return redirect('home')
 
 def sign_up(request):
     if request.method == 'POST':
@@ -13,21 +32,16 @@ def sign_up(request):
         if form.is_valid():
             try:
                 user = form.save(commit=False)
-                user.user_type = form.cleaned_data['user_type']  # Set user_type before saving
+                user.user_type = 'student'  # Force student type
                 user.save()
                 
-                # Create appropriate profile based on user type
-                if user.user_type == 'student':
-                    StudentProfile.objects.create(user=user)
-                elif user.user_type == 'librarian':
-                    LibrarianProfile.objects.create(user=user)
-                elif user.user_type == 'admin' or user.is_superuser:
-                    AdminProfile.objects.create(user=user)
+                # Create student profile
+                StudentProfile.objects.create(user=user)
                 messages.success(request, "Your account has been created")
                 return redirect('login')
             except ValidationError as e:
                 messages.error(request, str(e))
-                user.delete()  # Delete the user if profile creation fails
+                user.delete()
                 return redirect('sign_up')
     else:
         form=RegisterForm()
@@ -84,3 +98,4 @@ def profile(request):
 def logout_view(request):
     logout(request)
     return render(request, 'users/logout.html')
+
